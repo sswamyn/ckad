@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sidepod
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+  # These containers are run during pod initialization
+  initContainers:
+  - name: install
+    image: busybox:1.28
+    restartPolicy: Always    
+    command:
+    - sleep
+    - "15"
+
+
