@@ -1,0 +1,351 @@
+﻿Click to edit Master title style     
+CKAD 
+2024 edition
+Click to edit Master title style Intro • This session is provided by Sander van Vugt     
+• It is a completely reworked class, based on my on-demand class "CKAD 4th  edition (available august 2024)" 
+• Today is the first time I'm running this completely reworked class, it may  contain bugs 
+• Participants are expected to know how to run an application in Kubernetes • To follow along, use Minikube inside an Ubuntu Desktop environment • Other environments may work, but are not supported
+Click to edit Master title style Poll Question 1 Rate your Kubernetes knowledge     
+• none 
+• poor 
+• average 
+• good 
+• more than good
+Click to edit Master title style Poll Question 2 • Where are you from?     
+• Middle East 
+• Africa 
+• India 
+• Asia (other) 
+• North/Central America 
+• South America 
+• Pacific region 
+• Europe
+Click to edit Master title style Agenda Day 1     
+• Creating Custom Images 
+• Managing Pod Properties 
+• Running Applications 
+• Managing Application Access 
+• Managing Network Access 
+Day2 
+• Application observability and maintenance 
+• Custom Resources 
+• Storage 
+• ConfigMaps and Secrets 
+• DevOps Technologies 
+• Application Security
+Click to edit Master title style Using an environment in this course     
+• Recommended: create an Ubuntu-based minikube environment as  described in the setup guide in  
+https://github.com/sandervanvugt/microservices 
+• Alternatively: use O'Reilly sandbox, but functionality will be missing or  different 
+• Note that the slide numbering corresponds to the numbering in CKAD 4th  edition
+Click to edit Master title style Creating Custom Images    
+Click to edit Master title style   
+Lesson 2: Managing Container  
+Images 
+2.4 Using Dockerfile to Build Custom  
+Images
+Click to edit Master title style Using Dockerfile • Dockerfile can be provided by application developers. 
+• In Podman environments, Dockerfile is referred to as Containerfile, there  are no functional differences. 
+• It's also relatively easy to write your own. 
+• To build an image from a Dockerfile, use docker built -t imagename . • In this command, -t (tag) specifies the name of the image you want to  create. 
+• . refers to the current directory as the directory where the Dockerfile is  found.
+Click to edit Master title style Demo: Build an Image from Dockerfile • cd ckad 
+• cat Dockerfile 
+• docker build -t myapp . 
+• docker images 
+• docker image inspect myapp 
+• docker run myapp
+Click to edit Master title style 
+Lesson 2: Managing Container  
+Images 
+2.5 Creating Images from Running  
+Containers
+Click to edit Master title style Demo: Creating Images with docker commit • docker run --name customweb -it nginx sh 
+• touch /tmp/testfile 
+• exit 
+• docker commit customweb nginx:custom 
+• docker images 
+• docker run -it localhost/nginx:custom /tmp/testfile
+Click to edit Master title style Managing Pod Properties
+Click to edit Master title style 
+Lesson 5: Pod Basic Features 
+5.6 Namespaces
+Click to edit Master title style Namespaces 
+• Kubernetes Namespace resources leverage Linux kernel namespaces to  provide resource isolation. 
+• Different Namespaces can be used to strictly separate between customer  resources and thus enable multi-tenancy. 
+• Namespaces are used to apply different security-related settings, • Role-Based Access Control (RBAC) 
+• Quota 
+• By installing complex Kubernetes applications in their own Namespace,  managing them is easier.
+Click to edit Master title style Managing Namespaces • To show resources in all Namespaces, use kubectl get ... -A • To run resources in a specific Namespace, use kubectl run ... -n namespace • Use kubectl create ns nsname to create a Namespace.
+Click to edit Master title style Demo: Namespaces • kubectl get pods 
+• kubectl get pods -A 
+• kubectl create ns secret 
+• kubectl run pod secretpod --image=nginx -n secret • kubectl get pods -n secret
+Click to edit Master title style 
+Lesson 6: Pod Advanced  
+Features 
+6.1 init Containers
+Click to edit Master title style init Containers 
+• An init container is a special case of a multi-container Pod, where the init  container runs to completion before the main container is started. • Starting the main container depends on the success of the init container, if  the init container fails the main container will never start.
+Click to edit Master title style 
+Lesson 6: Pod Advanced  
+Features 
+6.2 Sidecar Containers
+Click to edit Master title style Sidecar Containers 
+• A sidecar container is an initContainer that has the restartPolicy field set to  Always. 
+• It doesn't occur as a specific attribute, to create a sidecar you need to  create an initContainer with the restartPolicy set to Always. 
+• The sidecar container will be started before the main Pod is started and is  typically used to repeatedly run a command. 
+• Like a regular initContainer, the sidecar container must complete once  before the main Pod is started.
+Click to edit Master title style 
+Lesson 6: Pod Advanced  
+Features 
+6.4 restartPolicy
+Click to edit Master title style restartPolicy 
+• The Pod restartPolicy determines what happens if a container that is  managed by a Pod crashes. 
+• If set to the default value restartPolicy=always, the container will be  restarted after a crash. 
+• restartPolicy=always does not affect the state of the entire Pod. • If the Pod is stopped or killed, restartPolicy=always won't restart it.
+Click to edit Master title style Demo: restartPolicy • kubectl run nginx1 --image=nginx 
+• kubectl get pods nginx1 -o yaml | grep restartP • kubectl delete pods nginx1 
+• kubectl get pods 
+• kubectl run nginx2 --image=nginx 
+• minikube ssh 
+• crictl ps | grep nginx 
+• crictl stop $(crictl ps | awk '/nginx1/ { print $1 }') • exit 
+• kubectl get pods
+Click to edit Master title style 
+Lesson 6: Pod Advanced  
+Features 
+6.5 Jobs
+Click to edit Master title style Jobs • A Job starts a Pod with the restartPolicy set to never. • To create a Pod that runs to completion, use Jobs instead. • Jobs are useful for one-shot tasks, like backup, calculation, batch  processing, and more. 
+• Use spec.ttlSecondsAfterFinished to clean up completed Jobs  automatically.
+Click to edit Master title style Job Types 
+3 different Job types can be started, which is specified by the completions and  parallelism parameters: 
+• Non-parallel Jobs: one Pod is started, unless the Pod fails • completions=1 
+• parallelism=1 
+• Parallel Jobs with a fixed completion count: the Job is complete after  successfully running as many times as specified in jobs.spec.completions • completions=n 
+• parallelism=m 
+• Parallel Jobs with a work queue: multiple Jobs are started, when one  completes successfully, the Job is complete 
+• completions=1 
+• parallelism=n
+Click to edit Master title style Demo: Using Jobs • kubectl create job onejob --image=busybox -- date 
+• kubectl get jobs, pods 
+• kubectl get pods onejob-xxx -o yaml | grep restartPolicy • kubectl delete job onejob 
+• kubectl create job mynewjob --image=busybox --dry-run=client -o yaml -- sleep 5 > mynewjob.yaml 
+• Edit mynewjob.yaml and include the following in job.spec  • completions: 3 
+• ttlSecondsAfterFinished: 60 
+• kubectl apply -f mynewjob.yaml
+Click to edit Master title style 
+Lesson 6: Pod Advanced  
+Features 
+6.6 CronJobs
+Click to edit Master title style CronJobs • Jobs are used to run a task a specific number of times. 
+• A CronJob adds a schedule to a Job. 
+• To add the schedule, Linux crontab syntax is used. 
+• When running a CronJob, a Job will be scheduled. 
+• This Job, on its turn, will start a Pod. 
+• To test a CronJob, use kubectl create job myjob --from=cronjob/mycronjob
+Click to edit Master title style Demo: Running CronJobs • kubectl create cronjob -h | less 
+• kubectl create cronjob runme --image=busybox --schedule="*/2 * * * *" -- echo greetings from your cluster 
+• kubectl create job runme --from=cronjob/runme 
+• kubectl get cronjobs,jobs,pods 
+• kubectl logs runme-xxx-yyy 
+• kubectl delete cronjob runme
+Click to edit Master title style 
+Lesson 15: Security 
+15.5 Resource Requirements, Limits,  
+and Quota
+Click to edit Master title style Understanding Resources 
+• Resource requests can be set for containers in a Pod to ensure that the Pod  is only scheduled on cluster nodes that meet the resource requests. • Use pod.spec.containers.resources.requests to set 
+• Resource limits can be set for Pods to maximize the use of system  resources. 
+• Use pod.spec.containers.resources.limits to define 
+• Quota are restrictions that can be set on a Namespace to maximize the  availability of resources within that Namespace. 
+• To set resource requests and limits you don't have to use Quota. • If a Namespace has Quota, all Pods running in that Namespace must have  resources set.
+Click to edit Master title style Understanding Resource Limitations • Memory as well as CPU limits can be used. 
+• CPU limits are expressed in millicore or millicpu, 1/1000 of a CPU core. • So, 500 millicore is 0.5 CPU 
+• When being scheduled, the kube-scheduler ensures that the node running  the Pods has all requested resources available. 
+• If a Pod with resource limits cannot be scheduled, it will show a status of  Pending. 
+• Use kubectl set resources ... to apply resource limits to running  applications in deployments (covered later).
+Click to edit Master title style Understanding Quota • Quota are restrictions that are applied to Namespaces. • If Quota are set on a Namespace, applications started in that Namespace  must have resource requests and limits set. 
+• Use kubectl create quota ... -n mynamespace to apply Quota 
+Click to edit Master title style Demo: Using Resource Requests and Limits • kubectl create -f frontend-resources.yaml 
+• kubectl get pods 
+• kubectl describe pod frontend 
+• kubectl delete -f frontend-resources.yaml
+Click to edit Master title style Demo: Using Quota • kubectl create ns restricted 
+• kubectl create quota myquota -n restricted --hard=cpu=2,-- memory=1G,pods=3 
+• kubectl describe ns restricted 
+• kubectl run pod restrictedpod --image=nginx -n restricted # will fail • kubectl create deploy restricteddeploy --image=nginx -n restricted • kubectl set resources -n restricted deploy restricteddeploy -- limits=cpu=200m,memory=2G 
+• kubectl describe -n restricted deploy restricteddeploy • kubectl set resources -n restricted deploy restricteddeploy -- limits=cpu=200m,memory=128M --requests=cpu=100m,memory=64M
+Click to edit Master title style Running Applications
+Click to edit Master title style 
+Lesson 8: Deployments 
+8.4 Deployment Updates
+Click to edit Master title style Understanding Application Updates • Depoyments make updating applications easier. 
+• To manage how applications are updated, an update strategy is used: • strategy.type.rollingUpdate updates application instances in batches to ensure  application functionality continues to be offered at any time 
+• As a result of rollingUpdate, during the update different versions of the  application will be running 
+• For applications that don't support offering multiple versions simultaneously,  set strategy.type.recreate 
+• The recreate strategy brings down all application instances, after which the new  application version is brought up.
+Click to edit Master title style Managing Rolling Updates • To manage how rollingUpdate will happen, two parameters are used: • maxSurge specifies how many application instances can be running during the  update above the regular number of application instances. 
+• maxUnavailable defines how many application instances can be temporarily  unavailable. 
+• Both parameters take an absolute number or a percentage as their  argument.
+Click to edit Master title style Demo: Managing Updates • kubectl create deploy upapp --image=nginx:1.17 --replicas=5 • kubectl get deploy upapp -o yaml | grep -A5 strategy • kubectl set image deploy/upapp nginx=nginx:1.18; kubectl get all -- selector app=upapp 
+• kubectl edit deploy upapp 
+• change strategy.type to Recreate 
+• kubectl set image deploy/upapp nginx=nginx:1.19; kubectl get all -- selector app=upapp
+Click to edit Master title style 
+Lesson 8: Deployments 
+8.5 Deployment History
+Click to edit Master title style Understanding Deployment History 
+• During the Deployment update procedure, the Deployment  creates a new ReplicaSet that uses the new properties. • The old ReplicaSet is kept, but the number of Pods will be set  to 0. 
+• This makes it easy to roll back to the previous state. • kubectl rollout history will show the rollout history of a  specific deployment, which can easily be reverted as well. • Use kubectl rollout history deployment mynginx --revision=1  to observe changes between versions.
+Click to edit Master title style Demo: Managing Rollout History • kubectl create –f rolling.yaml 
+• kubectl rollout history deployment 
+• kubectl edit deployment rolling-nginx # change version to 1.15 • kubectl rollout history deployment 
+• kubectl describe deployments rolling-nginx 
+• kubectl rollout history deployment rolling-nginx --revision=2 • kubectl rollout history deployment rolling-nginx --revision=1 • kubectl rollout undo deployment rolling-nginx --to-revision=1
+Click to edit Master title style Managing Application Access
+Click to edit Master title style 
+Lesson 10: Networking 
+10.2 Services
+Click to edit Master title style Services • A Service is an API resource that is used to expose a set of Pods. • Services are applying round-robin load balancing to forward traffic to  specific Pods. 
+• The set of Pods that is targeted by a Service is determined by a selector (which is a label). 
+• The kube-controller-manager will continuously scan for Pods that match  the selector and include these in the Service. 
+• If Pods are added or removed, they immediately show up in the Service.
+Click to edit Master title style Services and Decoupling • Services exist independently from the applications they provide access to. • The Service needs to be created independently of the application, and after  
+removing an application, it also needs to be removed separately. • The only thing they do is watch for Pods that have a specific label set  matching the selector that is specified in the service. 
+• That means that one Service can provide access to Pods in multiple  Deployments, and while doing so, Kubernetes will automatically load  balance between these Pods. 
+• This strategy is used in canary Deployments (covered later).
+Click to edit Master title style Service Types 
+• ClusterIP: this default type exposes the service on an internal cluster IP  address. 
+• NodePort: allocates a specific port on the node that forwards to the service  IP address on the cluster network. 
+• LoadBalancer: provisions an external load balancer to handle incoming  traffic to applications in public cloud. 
+• ExternalName: works on DNS names; redirection is happening at a DNS  level, which is useful in migration. 
+• Headless: a Service used in cases where direct communication with Pods is  required, which is used in StatefulSet. 
+For CKAD, focus on ClusterIP and NodePort.
+Click to edit Master title style 
+Lesson 10: Networking 
+10.3 Creating Services
+Click to edit Master title style Creating Services 
+• kubectl expose can be used to create Services, providing access to  Deployments, ReplicaSets, Pods or other services. 
+• In most cases kubectl expose exposes a Deployment, which allocates its  Pods as the service endpoint. 
+• kubectl create service can be used as an alternative solution to create  Services. 
+• While creating a Service, the --port argument must be specified to indicate  the port on which the Service will be listening for incoming traffic.
+Click to edit Master title style Service Ports • While working with Services, different ports are specified: • targetPort: the port on the application (container) that the service addresses. • port: the port on which the Service is accessible 
+• nodePort: the port that is exposed externally while using the NodePort Service  type.
+Click to edit Master title style Demo: Creating Services • kubectl create deployment nginxsvc --image=nginx • kubectl scale deployment nginxsvc --replicas=3 • kubectl expose deployment nginxsvc --port=80 • kubectl describe svc nginxsvc # look for endpoints • kubectl get svc nginxsvc -o=yaml 
+• kubectl get svc 
+• kubectl get endpoints
+Click to edit Master title style Demo: Creating Services • minikube ssh 
+• curl http://svc-ip-address 
+• exit 
+• kubectl edit svc nginxsvc 
+… 
+protocol: TCP 
+nodePort: 32000 
+type: NodePort 
+• kubectl get svc 
+• (from host): curl http://$(minikube ip):32000
+Click to edit Master title style 
+Lesson 10: Networking 
+10.5 Services and DNS
+Click to edit Master title style Services and DNS 
+• Exposed Services automatically register with the Kubernetes internal  coredns DNS server. 
+• The standard DNS name is composed as  
+servicename.namespace.svc.clustername 
+• As a result, Pods within the same Namespace can access servicename by  using its short name. 
+• To access servicenames in other Namespaces, the fully qualified domain  name must be used.
+Click to edit Master title style Demo: Services and DNS • kubectl describe svc -n kube-system kubernetes 
+• kubectl create ns elsewhere 
+• kubectl run nginxpod -n elsewhere 
+• kubectl expose -n elsewhere nginxpod --port=80 
+• kubectl run testpod --image=busybox -- sleep infinity • kubectl exec -it testpod -- cat /etc/resolv.conf 
+• kubectl exec -it testpod -- wget --spider --timeout=1 nginxpod # fails • kubectl exec -it testpod -- wget --spider --timeout=1  nginxpod.elsewhere.svc.cluster.local
+Click to edit Master title style 
+Lesson 11: Ingress and  
+Gateway API 
+11.1 Managing Incoming Traffic
+Click to edit Master title style Managing Incoming Traffic • For a long time, Ingress has been the solution to manage incoming traffic. • Recently, Ingress has gone into a "feature freeze" and will be replaced by  Gateway API. 
+• Currently, Ingress is still in the exam objectives, this is expected to be  replaced with Gateway API in the future.
+Click to edit Master title style 
+Lesson 11: Ingress and  
+Gateway API 
+11.2 Ingress Components
+Click to edit Master title style Understanding Ingress 
+• Ingress is used to provide external access to internal Kubernetes  cluster resources. 
+• To do so, Ingress uses an external load balancer. 
+• This load balancer is implemented by the Ingress controller which is  running as a Kubernetes application. 
+• As an API resource, Ingress uses Services to connect to Pods that are  used as a service endpoint. 
+• To access resources in the cluster, the host name resolution (DNS or  /etc/hosts) must be configured to resolve to the Ingress load balancer  IP.
+Click to edit Master title style Understanding Ingress 
+• Ingress exposes HTTP and HTTPS routes from outside the cluster to  Pods within the cluster. 
+• Traffic routing is controlled by rules defined on the Ingress resource. • Ingress can be configured to do the following: 
+• Give Services externally-reachable URLs 
+• Load balance traffic 
+• Terminate SSL/TLS 
+• Offer name based virtual hosting
+Click to edit Master title style 
+Lesson 11: Ingress and  
+Gateway API 
+11.4 Using the Minikube Ingress  
+Controller
+Click to edit Master title style Minikube Ingress 
+• Minikube is a Kubernetes distribution and comes with addons to integrate  third-party solutions. 
+• Use minikube addons list to show available addons. 
+• Use minikube addons enable to enable a specific addon.
+Click to edit Master title style Demo: Using the Minikube Ingress Addon • minikube addons list 
+• minikube addons enable ingress 
+• kubectl get ns 
+• kubectl get all -n ingress-nginx
+Click to edit Master title style 
+Lesson 11: Ingress and  
+Gateway API 
+11.5 Using Ingress
+Click to edit Master title style Demo: Configuring Ingress Rules • kubectl create deploy nginxsvc --image=nginx --port=80 • kubectl expose deploy nginxsvc 
+• kubectl create ingress nginxsvc-ingress --rule="/=nginxsvc:80" -- rule="/hello=newdep:8080" 
+• echo "$(minikube ip) nginxsvc.info" >> /etc/hosts 
+• kubectl describe ing nginxsvc-ingress 
+• curl nginxsvc.info 
+• kubectl create deployment newdep --image=gcr.io/google-samples/hello app:2.0 
+• kubectl expose deployment newdep --port=8080  
+• curl nginxsvc.info/hello
+Click to edit Master title style Managing Network Access
+Click to edit Master title style 
+Lesson 10: Networking 
+10.6 NetworkPolicy
+Click to edit Master title style NetworkPolicy • By default, there are no restrictions to network traffic in K8s. • Pods can always communicate, even if they're in other Namespaces. • To limit this, NetworkPolicies can be used. 
+• NetworkPolicies need to be supported by the network plugin though, • The Weave plugin does NOT support network policies! 
+• Calico is a common plugin that does support NetworkPolicy. • If in a policy there is no match, traffic will be denied. • If no NetworkPolicy is used, all traffic is allowed.
+Click to edit Master title style NetworkPolicy Identifiers • In NetworkPolicy, three different identifiers can be used: • podSelector: specifies a label to match Pods. 
+• namespaceSelector: used to grant access to specific namespaces. • ipBlock: marks a range of IP addresses that is allowed. notice that traffic to and  from the node where a Pod is running is always allowed. 
+• When defining a Pod- or Namespace-based NetworkPolicy, a selector label  is used to specify what traffic is allowed to and from the Pods that match  the selector. 
+• NetworkPolicies do not conflict, they are additive.
+Click to edit Master title style Demo: Using NetworkPolicy • kubectl get pods -n kube-system | grep -i calico 
+• kubectl apply -f nwpolicy-complete-example.yaml 
+• kubectl expose pod nginx --port=80 
+• kubectl exec -it busybox -- wget --spider --timeout=1 nginx will fail • kubectl label pod busybox access=true 
+• kubectl exec -it busybox -- wget --spider --timeout=1 nginx will work
+Click to edit Master title style Application Observability
+Click to edit Master title style 
+Lesson 17: Observability 
+17.3 Kubernetes API Health Endpoints
+Click to edit Master title style Health Probes 
+• To monitor if an application still is working as expected, health probes can  be used. 
+• As a common practice, applications can be programmed to provide access  to the /healthz endpoint to test application availability. 
+• The kube-apiserver itself exposes three endpoints to test that it is working: • /healthz: returns "ok" if the API server is healthy 
+• /livez: indicates if the API server is alive 
+• /readyz: indicates if the API server is ready to service requests 
+• Use curl -k https://$(minikube ip):8443/healthz to test, it should return  "ok" as result. 
+• Similar endpoints may be provided by any web-based application.
+Click to edit Master title style 
+Lesson 17: Observability 
+17.4 Using Probes to Monitor  
+Applications
+Click to edit Master title style Understanding Probes 
+• The probe itself is a simple test that is defined as a container property,  which is often a command. 
+• Probes are used to test if the application that uses it is still functional. • If the probe doesn't respond, the application is restarted. • The following probe test types are defined in pods.spec.container: • exec: a command is executed and returns a zero exit value. 
+• httpGet: an HTTP request returns a response code between 200 and 399. • tcpSocket: connectivity to a TCP socket (available port) is successful. • Probes can be configured with a failureTreshold to determine how long it  can take the application to react.
+Click to edit Master title style Probe Types • Kubernetes can use 3 different probe types: 
+• livenessProbe: checks if the application is alive. Container will be restarted if the  probe test fails. 
+• readinessProbe: checks if the application is ready to service requests. Container  will be removed from the list of available services if it fails. 
+• startupProbe: used to verify initial startup of the application, useful if startup  can be slow. No other probes are used before this probe finishes successfully.
+Click to edit Master title style Custom Resources
